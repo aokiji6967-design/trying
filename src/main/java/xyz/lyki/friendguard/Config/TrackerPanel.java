@@ -163,11 +163,6 @@ public class TrackerPanel extends Screen {
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
         super.render(context, mouseX, mouseY, deltaTicks);
-        int centerX = this.width / 2;
-        int titleY = 20;
-        String titleText = "No Friendly Fire - Track Players";
-        int titleWidth = this.textRenderer.getWidth(titleText);
-        context.drawText(this.textRenderer, titleText, centerX - titleWidth / 2, titleY, Formatting.WHITE.getColorValue() | 0xFF000000, false);
     }
 
     public static void openTrackerPanel(Screen parent) {
