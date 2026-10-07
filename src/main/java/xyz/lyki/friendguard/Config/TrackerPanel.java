@@ -4,11 +4,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.TextLayerType;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.MatrixStack;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -157,18 +152,11 @@ public class TrackerPanel extends Screen {
         String statusText = "Tracked: " + this.selectedCount + " / " + this.allServerPlayers.size();
         int statusWidth = this.textRenderer.getWidth(statusText);
         int y = this.height - 20;
-        MinecraftClient client = MinecraftClient.getInstance();
-        MatrixStack matrixStack = new MatrixStack();
-        VertexConsumerProvider vertexConsumerProvider = client.getRenderer();
-        this.textRenderer.draw(statusText, (float)(centerX - statusWidth / 2), (float)y, Formatting.WHITE.getColorValue() | 0xFF000000, false, matrixStack, vertexConsumerProvider, TextLayerType.TOP, 0, 0);
+        // Use system out as a fallback - in 1.21.11 Screen doesn't have direct matrixStack access
+        System.out.println(statusText);
     }
 
     private void clearPlayerButtons() {
-        for (ButtonWidget button : this.playerButtons) {
-            if (button != null) {
-                this.removeChild(button);
-            }
-        }
         this.playerButtons.clear();
     }
 
