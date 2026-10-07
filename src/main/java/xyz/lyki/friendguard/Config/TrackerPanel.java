@@ -152,7 +152,7 @@ public class TrackerPanel extends Screen {
         String statusText = "Tracked: " + this.selectedCount + " / " + this.allServerPlayers.size();
         int statusWidth = this.textRenderer.getWidth(statusText);
         int y = this.height - 20;
-        this.textRenderer.draw(statusText, centerX - statusWidth / 2, y, Formatting.WHITE.getColorValue() | 0xFF000000);
+        this.textRenderer.draw(statusText, (float)(centerX - statusWidth / 2), (float)y, Formatting.WHITE.getColorValue() | 0xFF000000);
     }
 
     private void clearPlayerButtons() {
@@ -160,7 +160,7 @@ public class TrackerPanel extends Screen {
             for (int c = 0; c < 4; c++) {
                 ButtonWidget button = this.playerButtons[r][c];
                 if (button != null) {
-                    this.removeDrawableChild(button);
+                    this.removeChild(button);
                     this.playerButtons[r][c] = null;
                 }
             }
@@ -174,7 +174,7 @@ public class TrackerPanel extends Screen {
         int titleY = 20;
         String titleText = "No Friendly Fire - Track Players";
         int titleWidth = this.textRenderer.getWidth(titleText);
-        this.textRenderer.draw(titleText, centerX - titleWidth / 2, titleY, Formatting.WHITE.getColorValue() | 0xFF000000);
+        context.drawText(this.textRenderer, titleText, (float)(centerX - titleWidth / 2), (float)titleY, Formatting.WHITE.getColorValue() | 0xFF000000);
     }
 
     public static void openTrackerPanel(Screen parent) {
