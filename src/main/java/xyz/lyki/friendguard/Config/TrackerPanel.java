@@ -173,6 +173,7 @@ public class TrackerPanel extends Screen {
     }
 
     public static void openTrackerPanel(Screen parent) {
-        new TrackerPanel(parent).client.setScreen(new TrackerPanel(parent));
+        TrackerPanel panel = new TrackerPanel(parent);
+        panel.client.setScreen(panel);
     }
 }
