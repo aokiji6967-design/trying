@@ -157,17 +157,16 @@ public class TrackerPanel extends Screen {
         String statusText = "Tracked: " + this.selectedCount + " / " + this.allServerPlayers.size();
         int statusWidth = this.textRenderer.getWidth(statusText);
         int y = this.height - 20;
-        // Use DrawContext which has proper rendering setup for 1.21.11
         MinecraftClient client = MinecraftClient.getInstance();
         MatrixStack matrixStack = new MatrixStack();
-        VertexConsumerProvider vertexConsumerProvider = client.getBufferBuilders();
+        VertexConsumerProvider vertexConsumerProvider = client.getRenderer();
         this.textRenderer.draw(statusText, (float)(centerX - statusWidth / 2), (float)y, Formatting.WHITE.getColorValue() | 0xFF000000, false, matrixStack, vertexConsumerProvider, TextLayerType.TOP, 0, 0);
     }
 
     private void clearPlayerButtons() {
         for (ButtonWidget button : this.playerButtons) {
             if (button != null) {
-                this.removeDrawableChild(button);
+                this.removeChild(button);
             }
         }
         this.playerButtons.clear();
