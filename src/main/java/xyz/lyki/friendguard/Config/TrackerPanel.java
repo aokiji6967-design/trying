@@ -4,6 +4,10 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.render.Matrix4f;
+import net.minecraft.client.render.TextRenderer;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.TextLayerType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import xyz.lyki.friendguard.FriendGuardClient;
@@ -26,7 +30,7 @@ public class TrackerPanel extends Screen {
     private ButtonWidget onButton;
     private ButtonWidget offButton;
     private boolean isCompassEnabled;
-    private ButtonWidget[][] playerButtons;
+    private List<ButtonWidget> playerButtons = new ArrayList<>();
     private List<String> allServerPlayers;
     private int buttonRow;
     private int buttonCol;
@@ -40,7 +44,6 @@ public class TrackerPanel extends Screen {
         this.scrollOffset = 0;
         this.isModEnabled = FriendGuardClient.isModEnabled;
         this.isCompassEnabled = FriendGuardClient.isCompassEnabled;
-        this.playerButtons = new ButtonWidget[MAX_DISPLAY][4];
         this.allServerPlayers = new ArrayList<>();
         this.buttonRow = 0;
         this.buttonCol = 0;
@@ -96,7 +99,7 @@ public class TrackerPanel extends Screen {
             }
             String buttonText = isSelected ? "[✓] " + playerName : "[ ] " + playerName;
             ButtonWidget button = ButtonWidget.builder(Text.literal(buttonText), b -> this.togglePlayer(playerName)).position(40, 20 + this.buttonRow * 25).size(200, 20).build();
-            this.playerButtons[this.buttonRow][this.buttonCol] = button;
+            this.playerButtons.add(button);
             this.addDrawableChild(button);
             this.buttonCol++;
         }
@@ -152,19 +155,16 @@ public class TrackerPanel extends Screen {
         String statusText = "Tracked: " + this.selectedCount + " / " + this.allServerPlayers.size();
         int statusWidth = this.textRenderer.getWidth(statusText);
         int y = this.height - 20;
-        this.textRenderer.draw(statusText, (float)(centerX - statusWidth / 2), (float)y, Formatting.WHITE.getColorValue() | 0xFF000000);
+        this.textRenderer.draw(statusText, (float)(centerX - statusWidth / 2), (float)y, Formatting.WHITE.getColorValue() | 0xFF000000, false);
     }
 
     private void clearPlayerButtons() {
-        for (int r = 0; r < this.buttonRow + 1; r++) {
-            for (int c = 0; c < 4; c++) {
-                ButtonWidget button = this.playerButtons[r][c];
-                if (button != null) {
-                    this.removeChild(button);
-                    this.playerButtons[r][c] = null;
-                }
+        for (ButtonWidget button : this.playerButtons) {
+            if (button != null) {
+                this.removeDrawableChild(button);
             }
         }
+        this.playerButtons.clear();
     }
 
     @Override
@@ -174,7 +174,7 @@ public class TrackerPanel extends Screen {
         int titleY = 20;
         String titleText = "No Friendly Fire - Track Players";
         int titleWidth = this.textRenderer.getWidth(titleText);
-        context.drawText(this.textRenderer, titleText, (float)(centerX - titleWidth / 2), (float)titleY, Formatting.WHITE.getColorValue() | 0xFF000000);
+        context.drawText(this.textRenderer, titleText, centerX - titleWidth / 2, titleY, Formatting.WHITE.getColorValue() | 0xFF000000, false);
     }
 
     public static void openTrackerPanel(Screen parent) {
