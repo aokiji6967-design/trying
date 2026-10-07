@@ -3,7 +3,6 @@ package xyz.lyki.friendguard.Config;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.CheckBoxWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -13,6 +12,8 @@ import xyz.lyki.friendguard.KeyUtils.ClearList;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public class TrackerPanel extends Screen {
     private final Screen parent;
@@ -25,11 +26,12 @@ public class TrackerPanel extends Screen {
     private ButtonWidget onButton;
     private ButtonWidget offButton;
     private boolean isCompassEnabled;
-    private CheckBoxWidget[][] playerCheckboxes;
+    private ButtonWidget[][] playerButtons;
     private List<String> allServerPlayers;
-    private int checkboxRow;
-    private int checkboxCol;
+    private int buttonRow;
+    private int buttonCol;
     private int selectedCount;
+    private Map<String, Boolean> playerSelectionState;
 
     public TrackerPanel(Screen parent) {
         super(Text.literal("No Friendly Fire - Track Players"));
@@ -38,32 +40,31 @@ public class TrackerPanel extends Screen {
         this.scrollOffset = 0;
         this.isModEnabled = FriendGuardClient.isModEnabled;
         this.isCompassEnabled = FriendGuardClient.isCompassEnabled;
-        this.playerCheckboxes = new CheckBoxWidget[MAX_DISPLAY][4];
+        this.playerButtons = new ButtonWidget[MAX_DISPLAY][4];
         this.allServerPlayers = new ArrayList<>();
-        this.checkboxRow = 0;
-        this.checkboxCol = 0;
+        this.buttonRow = 0;
+        this.buttonCol = 0;
         this.selectedCount = 0;
+        this.playerSelectionState = new HashMap<>();
     }
 
     @Override
     protected void init() {
         int centerX = this.width / 2;
         int startY = this.height / 4 - 30;
-        int listX = 30;
-        int listY = startY + 60;
 
         this.textFieldWidget = new TextFieldWidget(this.textRenderer, centerX + 50, startY + 20, 200, 20, Text.literal(""));
         this.textFieldWidget.setChangedListener(text -> {});
         this.addDrawableChild(this.textFieldWidget);
 
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Open Player List (J)"), button -> this.refreshPlayerList()).position(centerX + 50, startY + 50).size(200, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Refresh List"), button -> this.refreshPlayerList()).position(centerX + 50, startY + 50).size(200, 20).build());
         this.addDrawableChild(ButtonWidget.builder(Text.literal("Clear Selected"), button -> this.clearSelectedPlayers()).position(centerX + 50, startY + 80).size(200, 20).build());
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Toggle All"), button -> this.toggleAllPlayers()).position(centerX + 50, startY + 110).size(200, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Select All"), button -> this.selectAllPlayers()).position(centerX + 50, startY + 110).size(200, 20).build());
         this.addDrawableChild(ButtonWidget.builder(Text.literal("Close"), button -> this.client.setScreen(this.parent)).position(centerX + 155, startY + 110).size(95, 20).build());
 
         this.onButton = (ButtonWidget) this.addDrawableChild(ButtonWidget.builder(Text.literal("Enabled"), button -> this.toggleEnabled(true)).position(centerX + 50, startY + 140).size(95, 20).build());
         this.offButton = (ButtonWidget) this.addDrawableChild(ButtonWidget.builder(Text.literal("Disabled"), button -> this.toggleEnabled(false)).position(centerX + 155, startY + 140).size(95, 20).build());
-        this.toggleButtons(this.isModEnabled);
+        this.toggleEnabled(this.isModEnabled);
 
         this.refreshPlayerList();
     }
@@ -74,72 +75,66 @@ public class TrackerPanel extends Screen {
         if (this.allServerPlayers.isEmpty()) {
             this.allServerPlayers.add("No players found.");
         }
-        this.clearCheckboxes();
+        this.clearPlayerButtons();
         this.selectedCount = 0;
-        this.checkboxRow = 0;
-        this.checkboxCol = 0;
+        this.buttonRow = 0;
+        this.buttonCol = 0;
+        this.playerSelectionState.clear();
 
         for (String playerName : this.allServerPlayers) {
             if (playerName.equals("No players found.")) {
                 continue;
             }
             boolean isSelected = this.trackedPlayers.contains(playerName);
-            if (this.checkboxCol >= 4) {
-                this.checkboxRow++;
-                this.checkboxCol = 0;
+            this.playerSelectionState.put(playerName, isSelected);
+            if (isSelected) {
+                this.selectedCount++;
             }
-            CheckBoxWidget checkbox = new CheckBoxWidget(this.textRenderer, 40, 20 + this.checkboxRow * 20, 50, 20, Text.literal(playerName), isSelected, false);
-            checkbox.setChangedListener(selected -> {
-                if (selected) {
-                    if (!this.trackedPlayers.contains(playerName)) {
-                        this.trackedPlayers.add(playerName);
-                        this.selectedCount++;
-                    }
-                } else {
-                    this.trackedPlayers.remove(playerName);
-                    this.selectedCount--;
-                }
-            });
-            this.playerCheckboxes[this.checkboxRow][this.checkboxCol] = checkbox;
-            this.addDrawableChild(checkbox);
-            this.checkboxCol++;
+            if (this.buttonCol >= 4) {
+                this.buttonRow++;
+                this.buttonCol = 0;
+            }
+            String buttonText = isSelected ? "[✓] " + playerName : "[ ] " + playerName;
+            ButtonWidget button = ButtonWidget.builder(Text.literal(buttonText), b -> this.togglePlayer(playerName)).position(40, 20 + this.buttonRow * 25).size(200, 20).build();
+            this.playerButtons[this.buttonRow][this.buttonCol] = button;
+            this.addDrawableChild(button);
+            this.buttonCol++;
         }
         this.scrollOffset = 0;
         this.drawStatusBar();
     }
 
-    private void toggleAllPlayers() {
-        boolean anyUnselected = false;
-        for (int r = 0; r < this.checkboxRow + 1; r++) {
-            for (int c = 0; c < 4; c++) {
-                CheckBoxWidget checkbox = this.playerCheckboxes[r][c];
-                if (checkbox != null && !checkbox.selected) {
-                    anyUnselected = true;
-                    break;
+    private void togglePlayer(String playerName) {
+        boolean currentlySelected = this.trackedPlayers.contains(playerName);
+        if (currentlySelected) {
+            this.trackedPlayers.remove(playerName);
+            this.selectedCount--;
+            this.playerSelectionState.put(playerName, false);
+        } else {
+            this.trackedPlayers.add(playerName);
+            this.selectedCount++;
+            this.playerSelectionState.put(playerName, true);
+        }
+        this.refreshPlayerList();
+    }
+
+    private void selectAllPlayers() {
+        for (String playerName : this.allServerPlayers) {
+            if (!playerName.equals("No players found.")) {
+                if (!this.trackedPlayers.contains(playerName)) {
+                    this.trackedPlayers.add(playerName);
+                    this.selectedCount++;
+                    this.playerSelectionState.put(playerName, true);
                 }
             }
         }
-        for (int r = 0; r < this.checkboxRow + 1; r++) {
-            for (int c = 0; c < 4; c++) {
-                CheckBoxWidget checkbox = this.playerCheckboxes[r][c];
-                if (checkbox != null) {
-                    checkbox.selected = anyUnselected;
-                    if (anyUnselected && !this.trackedPlayers.contains(checkbox.widgetText.getString())) {
-                        this.trackedPlayers.add(checkbox.widgetText.getString());
-                        this.selectedCount++;
-                    } else if (!anyUnselected && this.trackedPlayers.contains(checkbox.widgetText.getString())) {
-                        this.trackedPlayers.remove(checkbox.widgetText.getString());
-                        this.selectedCount--;
-                    }
-                }
-            }
-        }
-        this.drawStatusBar();
+        this.refreshPlayerList();
     }
 
     private void clearSelectedPlayers() {
         this.trackedPlayers.clear();
         this.selectedCount = 0;
+        this.playerSelectionState.clear();
         this.refreshPlayerList();
     }
 
@@ -154,22 +149,32 @@ public class TrackerPanel extends Screen {
 
     private void drawStatusBar() {
         int centerX = this.width / 2;
-        int listX = 30;
         String statusText = "Tracked: " + this.selectedCount + " / " + this.allServerPlayers.size();
-        int statusWidth = this.textRenderer.getWidth(Text.literal(statusText));
-        this.textRenderer.draw(Text.literal(statusText), centerX - statusWidth / 2, this.height - 20, Formatting.WHITE.getColorValue() | 0xFF000000, false);
+        int statusWidth = this.textRenderer.getWidth(statusText);
+        int y = this.height - 20;
+        this.textRenderer.draw(statusText, centerX - statusWidth / 2, y, Formatting.WHITE.getColorValue() | 0xFF000000);
     }
 
-    private void clearCheckboxes() {
-        for (int r = 0; r < this.checkboxRow + 1; r++) {
+    private void clearPlayerButtons() {
+        for (int r = 0; r < this.buttonRow + 1; r++) {
             for (int c = 0; c < 4; c++) {
-                CheckBoxWidget checkbox = this.playerCheckboxes[r][c];
-                if (checkbox != null) {
-                    this.removeDrawableChild(checkbox);
-                    this.playerCheckboxes[r][c] = null;
+                ButtonWidget button = this.playerButtons[r][c];
+                if (button != null) {
+                    this.removeDrawableChild(button);
+                    this.playerButtons[r][c] = null;
                 }
             }
         }
+    }
+
+    @Override
+    public void render(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
+        super.render(context, mouseX, mouseY, deltaTicks);
+        int centerX = this.width / 2;
+        int titleY = 20;
+        String titleText = "No Friendly Fire - Track Players";
+        int titleWidth = this.textRenderer.getWidth(titleText);
+        this.textRenderer.draw(titleText, centerX - titleWidth / 2, titleY, Formatting.WHITE.getColorValue() | 0xFF000000);
     }
 
     public static void openTrackerPanel(Screen parent) {
